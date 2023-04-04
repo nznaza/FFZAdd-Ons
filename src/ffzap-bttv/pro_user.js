@@ -1,76 +1,80 @@
 export default class ProUser {
-	constructor(parent, username, emotesArray) {
+	constructor(parent, userID, badge, emotes) {
 		this.parent = parent;
 
-		this.username = username;
-		this.emotesArray = emotesArray;
+		this.userID = userID;
+		this.badge = badge;
 
-		this.initialize();
+		this.setID = `addon--ffzap.betterttv--emotes-pro-${this.userID}`;
+		this.emotes = emotes || [];
+
+		this.loadBadge(badge, true);
+		this.loadEmotes(emotes, true);
 	}
 
-	initialize() {
-		this._id_emotes = `addon--ffzap.betterttv--emotes-pro-${this.username}`;
-
-		this.loadEmotes();
+	isBadgeEqual(badge = null) {
+		return this.badge?.url == badge?.url && this.badge?.startedAt == badge?.startedAt;
 	}
 
-	loadEmotes() {
-		this.emotes = [];
+	areEmotesEqual(emotes = []) {
+		return this.emotes.length === emotes.length &&
+			emotes.every(emote => this.emotes.includes(emote.id));
+	}
 
-		for (let i = 0; i < this.emotesArray.length; i++) {
-			const _emote = this.emotesArray[i];
-			const emote = {
-				urls: {
-					1: `https://cdn.betterttv.net/emote/${_emote.id}/1x`,
-					2: `https://cdn.betterttv.net/emote/${_emote.id}/2x`,
-					4: `https://cdn.betterttv.net/emote/${_emote.id}/3x`,
-				},
-				id: _emote.id,
-				name: _emote.code,
-				width: 28,
-				height: 28,
-				owner: {
-					display_name: _emote.channel || '',
-					name: _emote.channel || '',
-				},
-				require_spaces: true,
-				click_url: `https://betterttv.com/emotes/${_emote.id}`
+	loadBadge(badge = null, skipCheck = false) {
+		if (window.BetterTTV) return false;
+
+		if (!skipCheck && this.isBadgeEqual(badge)) return false;
+
+		this.badge = badge;
+
+		if (badge) {
+			const extraData = {
+				image: badge.url,
+				title: `BetterTTV Pro\n(Since ${this.parent.i18n.formatDate(new Date(badge.startedAt))})`
 			};
 
-			if (_emote.imageType === 'gif') {
-				emote.animated = emote.urls;
-				emote.urls = {
-					1: `https://cache.ffzap.com/${emote.animated[1]}`,
-					2: `https://cache.ffzap.com/${emote.animated[2]}`,
-					4: `https://cache.ffzap.com/${emote.animated[4]}`
-				};
-				/*if (this.parent.getAnimatedEmoteMode() === this.parent.GIF_EMOTES_MODE.DISABLED) { // If the GIF setting is set to "Disabled", ignore it.
-					continue;
-				} else if (this.parent.getAnimatedEmoteMode() === this.parent.GIF_EMOTES_MODE.STATIC) { // If the GIF setting is set to "Static", route them through the cache.
-					emote.urls[1] = `https://cache.ffzap.com/${emote.urls[1]}`;
-					emote.urls[2] = `https://cache.ffzap.com/${emote.urls[2]}`;
-					emote.urls[4] = `https://cache.ffzap.com/${emote.urls[4]}`;
-				}*/
-			}
-			this.emotes.push(emote);
+			this.parent.chat.getUser(this.userID).addBadge('addon--ffzap.betterttv', this.parent.getProBadgeID(), extraData);
+		}
+		else {
+			this.parent.chat.getUser(this.userID).removeBadge('addon--ffzap.betterttv', this.parent.getProBadgeID());
+		}
+
+		return true;
+	}
+
+	loadEmotes(_emotes = [], skipCheck = false) {
+		if (!skipCheck && this.areEmotesEqual(_emotes)) return false;
+
+		this.emotes = _emotes.map(emote => emote.id);
+
+		const emotes = [];
+
+		for (let i = 0; i < _emotes.length; i++) {
+			emotes.push(this.parent.convertBTTVEmote(_emotes[i]));
 		}
 
 		const set = {
-			emoticons: this.emotes,
+			emotes,
 			title: 'Personal Emotes',
 			source: 'BetterTTV',
-			icon: 'https://cdn.betterttv.net/tags/developer.png',
+			icon: 'https://betterttv.com/favicon.png',
 		};
 
-		if (this.emotes.length) {
-			this.parent.emotes.loadSetData(this._id_emotes, set, true);
-			this.parent.chat.getUser(undefined, this.username).addSet('addon--ffzap.betterttv', this._id_emotes);
-		} else {
-			this.parent.emotes.unloadSet(this._id_emotes);
+		if (emotes.length) {
+			this.parent.emotes.loadSetData(this.setID, set, true);
+			this.parent.chat
+				.getUser(this.userID)
+				.addSet('addon--ffzap.betterttv', this.setID);
 		}
+		else {
+			this.unload();
+		}
+
+		return true;
 	}
 
 	unload() {
-		this.parent.emotes.unloadSet(this._id_emotes);
+		this.parent.emotes.unloadSet(this.setID, true);
 	}
 }

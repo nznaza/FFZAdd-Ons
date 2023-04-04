@@ -266,18 +266,14 @@ class SmokeysUtils extends Addon {
 		let pinned_log = document.querySelector('#smokey_pinned_log');
 		if ( ! pinned_log ) {
 			const container = this.site_chat.ChatContainer.first,
-				el = container?.state?.chatListElement,
-				log = el && el.querySelector('[role="log"]');
-
-			if ( ! log )
-				return;
+				el = container?.state?.chatListElement;
 
 			pinned_log = createElement('div', {
 				id: 'smokey_pinned_log',
 				class: 'pinned-highlight-log tw-absolute tw-top-0 tw-full-width tw-z-above tw-c-background-base'
 			});
 
-			log.parentNode.prepend(pinned_log);
+			el.parentNode.prepend(pinned_log);
 		}
 
 		pinned_log.style.color = this.settings.get('smokemotes.pinned_font_color');
@@ -391,10 +387,14 @@ class SmokeysUtils extends Addon {
 	keep_hd_video() {
 		if (this.chat.context.get('smokemotes.keep_hd_video')) {
 			try {
-				Object.defineProperty(document, 'hidden', {
-					value: false,
-					writable: false,
-				});
+				document.addEventListener(
+					'visibilitychange',
+					(e) => {
+						e.stopImmediatePropagation();
+					},
+					true,
+					true
+				);
 			} catch (err) {
 				this.log.warn('Unable to install document visibility hook.', err);
 			}
